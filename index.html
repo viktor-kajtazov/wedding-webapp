@@ -5,8 +5,6 @@
     <meta charset="utf-8" />
     <title>Wedding Photo Drop</title>
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <!-- Google Identity Services (GIS) -->
-    https://accounts.google.com/gsi/client
     <style>
         :root {
             --bg: #0f172a;
@@ -107,143 +105,94 @@
     <div class="wrap">
         <div class="card">
             <h1>📸 Wedding Photo Drop</h1>
-            <p class="muted">Sign in with Google once, pick your photos/videos, and upload. No app installs.</p>
+            <p class="muted">Pick your photos/videos and upload. No login required.</p>
 
-            <div id="signin">
-                <button id="btnAuth">Sign in with Google</button>
-                <p class="muted" style="margin:.5rem 0 0">You’ll be asked for Google Drive permission to upload into the
-                    couple’s folder.</p>
-            </div>
-
-            <div id="uploader" style="display:none">
+            <div style="display:flex;gap:10px;margin-top:10px">
                 <input id="files" type="file" accept="image/*,video/*" multiple />
-                <div style="display:flex;gap:10px;margin-top:10px">
-                    <label for="files" class="btn">Select photos/videos</label>
-                    <button id="btnUpload">Upload</button>
-                    <button id="btnClear" class="ghost">Clear</button>
-                </div>
-                <div id="count" class="muted" style="margin-top:8px">No files selected yet.</div>
-                <div id="preview" class="grid"></div>
-                <div id="status" class="muted"></div>
+                <label for="files" class="btn">Select photos/videos</label>
+                <button id="btnUpload">Upload</button>
+                <button id="btnClear" class="ghost">Clear</button>
             </div>
+
+            <div id="count" class="muted" style="margin-top:8px">No files selected yet.</div>
+            <div id="preview" class="grid"></div>
+            <div id="status" class="muted"></div>
         </div>
     </div>
 
     <script>
-        /** === CONFIG === **/
-        const CLIENT_ID = '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.apps.googleusercontent.com'; // from Google Cloud Console
-        const FOLDER_ID = '1-IYS6jzryBfKvgU9zK2sC6tER-fJFCzx'; // target folder in YOUR Drive (shared with “anyone with the link → editor” or with specific emails)
+        const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbx1KeDuuJa44SKGYDp55DFza2Iql8rhjJM2nTrBAj9NTRwvVWMgnrl3Eah47j64udGI/exec'; // e.g., https://script.google.com/macros/s/AKfycb.../exec
+        const EVENT_CODE = 'VIKTOR2025'; // must match Code.gs; set '' to disable
 
-        // Minimal Drive scope: app can create files it owns (good for privacy)
-        const SCOPE = 'https://www.googleapis.com/auth/drive.file';
-
-        /** === STATE === **/
-        let tokenClient;
-        let accessToken = null; // GIS access token (expires ~1 hour)
-
-        /** === UI ELEMENTS === **/
-        const elSignin = document.getElementById('signin');
-        const elUploader = document.getElementById('uploader');
-        const elBtnAuth = document.getElementById('btnAuth');
+        // --- UI elements
         const elFiles = document.getElementById('files');
-        const elBtnUpload = document.getElementById('btnUpload');
+        const elBtnUp = document.getElementById('btnUpload');
         const elBtnClear = document.getElementById('btnClear');
+        const elPrev = document.getElementById('preview');
         const elCount = document.getElementById('count');
-        const elPreview = document.getElementById('preview');
         const elStatus = document.getElementById('status');
 
         function setStatus(msg, cls = '') { elStatus.className = cls; elStatus.textContent = msg; }
-
-        /** === AUTH USING GIS (implicit token flow) === **/
-        window.onload = () => {
-            tokenClient = google.accounts.oauth2.initTokenClient({
-                client_id: CLIENT_ID,
-                scope: SCOPE,
-                callback: (resp) => {
-                    if (resp.error) { setStatus('Authorization failed: ' + resp.error, 'err'); return; }
-                    accessToken = resp.access_token;
-                    elSignin.style.display = 'none';
-                    elUploader.style.display = 'block';
-                    setStatus('Signed in. Ready to upload.');
-                },
-            });
-        };
-
-        elBtnAuth.addEventListener('click', () => {
-            // prompts consent only the first time (or when token expired)
-            tokenClient.requestAccessToken({ prompt: '' });
-        });
-
-        /** === PREVIEW === **/
         function prettyBytes(n) { const u = ['B', 'KB', 'MB', 'GB']; let i = 0; while (n >= 1024 && i < u.length - 1) { n /= 1024; i++ } return `${n.toFixed(1)} ${u[i]}` }
+
         function refreshPreview() {
-            elPreview.innerHTML = '';
+            elPrev.innerHTML = '';
             const files = Array.from(elFiles.files || []);
             for (const f of files) {
                 const url = URL.createObjectURL(f);
                 const isVideo = f.type.startsWith('video/');
                 const div = document.createElement('div');
                 div.className = 'thumb';
-                div.innerHTML = isVideo ? `<video src="${url}" muted playsinline></video>` : `<img src="${url}" alt="">`;
-                elPreview.appendChild(div);
+                div.innerHTML = isVideo ? `<video src="${url}" muted playsinline></video>`
+                    : `<img src="${url}" alt="">`;
+                elPrev.appendChild(div);
             }
             const total = files.reduce((s, f) => s + f.size, 0);
-            elCount.textContent = files.length ? `${files.length} file(s), total ${prettyBytes(total)}.` : 'No files selected yet.';
+            elCount.textContent = files.length ? `${files.length} file(s), total ${prettyBytes(total)}.`
+                : 'No files selected yet.';
         }
         elFiles.addEventListener('change', refreshPreview);
         elBtnClear.addEventListener('click', () => { elFiles.value = ''; refreshPreview(); setStatus(''); });
 
-        /** === DRIVE UPLOAD (RESUMABLE) === **/
-        // Create a resumable session, then upload bytes to the returned Location.
-        // Docs: https://developers.google.com/drive/api/guides/manage-uploads#resumable
+        // --- Upload one file using JSON body of Int8Array (avoids preflight/CORS)
         async function uploadOne(file) {
-            if (!accessToken) throw new Error('Not authorized');
-
-            // 1) Start a resumable session
-            const meta = { name: `${Date.now()}_${file.name}`.replace(/[\\/:*?"<>|#\\[\\]@]/g, '_'), parents: [FOLDER_ID], mimeType: file.type || 'application/octet-stream' };
-            const initRes = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable', {
-                method: 'POST',
-                headers: {
-                    'Authorization': 'Bearer ' + accessToken,
-                    'Content-Type': 'application/json; charset=UTF-8',
-                    'X-Upload-Content-Type': file.type || 'application/octet-stream',
-                    'X-Upload-Content-Length': file.size
-                },
-                body: JSON.stringify(meta)
+            return new Promise((resolve, reject) => {
+                const fr = new FileReader();
+                fr.onerror = () => reject(fr.error);
+                fr.onload = async evt => {
+                    try {
+                        const bytes = new Int8Array(evt.target.result);
+                        const body = JSON.stringify(Array.from(bytes)); // plain text -> CORS "simple" POST
+                        const qs = new URLSearchParams({
+                            filename: file.name,
+                            mimeType: file.type || 'application/octet-stream',
+                            code: EVENT_CODE
+                        });
+                        const res = await fetch(`${WEB_APP_URL}?${qs.toString()}`, {
+                            method: 'POST',
+                            body // no custom headers -> no preflight
+                        });
+                        const json = await res.json();
+                        if (!json.ok) throw new Error(json.error || 'Upload failed');
+                        resolve(json);
+                    } catch (e) { reject(e); }
+                };
+                fr.readAsArrayBuffer(file);
             });
-            if (!initRes.ok) {
-                // If token expired (401/403), re-request and retry once
-                if (initRes.status === 401 || initRes.status === 403) {
-                    await new Promise((resolve, reject) => {
-                        tokenClient.callback = (resp) => resp.error ? reject(resp) : (accessToken = resp.access_token, resolve());
-                        tokenClient.requestAccessToken({ prompt: '' });
-                    });
-                    return uploadOne(file);
-                }
-                throw new Error('Failed to start upload: ' + initRes.status + ' ' + await initRes.text());
-            }
-            const uploadUrl = initRes.headers.get('Location');
-            if (!uploadUrl) throw new Error('No resumable upload URL returned.');
-
-            // 2) PUT the bytes
-            const putRes = await fetch(uploadUrl, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': file.type || 'application/octet-stream',
-                    'Content-Length': file.size
-                },
-                body: file
-            });
-            if (!putRes.ok) throw new Error('Upload failed: ' + putRes.status + ' ' + await putRes.text());
-            return putRes.json(); // { id, name, ... }
         }
 
-        elBtnUpload.addEventListener('click', async () => {
+        elBtnUp.addEventListener('click', async () => {
             const files = Array.from(elFiles.files || []);
             if (!files.length) { setStatus('Please select one or more files.', 'err'); return; }
-            setStatus('Uploading… please keep this page open.');
 
-            elBtnUpload.disabled = true;
+            // Guardrail: very large videos will be slow; photos are best.
+            const total = files.reduce((s, f) => s + f.size, 0);
+            if (total > 60 * 1024 * 1024) { // ~60MB guidance
+                setStatus('This seems large. Consider fewer files or trimming videos for a faster upload.', 'err');
+                // continue anyway
+            }
+
+            elBtnUp.disabled = true;
             try {
                 let done = 0;
                 for (const f of files) {
@@ -252,12 +201,12 @@
                     setStatus(`Uploaded ${done}/${files.length}…`);
                 }
                 elFiles.value = ''; refreshPreview();
-                setStatus(`✅ All files uploaded. Thank you!`, 'ok');
+                setStatus('✅ All files uploaded. Thank you!', 'ok');
             } catch (e) {
                 console.error(e);
                 setStatus(String(e.message || e), 'err');
             } finally {
-                elBtnUpload.disabled = false;
+                elBtnUp.disabled = false;
             }
         });
     </script>
