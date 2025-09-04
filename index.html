@@ -45,6 +45,34 @@
             backdrop-filter: blur(8px)
         }
 
+        .header-section {
+            position: relative;
+            margin-bottom: 30px;
+        }
+
+        .lang-toggle {
+            position: absolute;
+            top: 0;
+            right: 0;
+            background: transparent;
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            color: var(--muted);
+            font-size: 0.85rem;
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .lang-toggle:hover {
+            background: rgba(212, 175, 55, 0.1);
+            border-color: var(--accent);
+            color: var(--accent);
+            transform: none;
+            box-shadow: 0 2px 8px rgba(212, 175, 55, 0.2);
+        }
+
         h1 {
             margin: 0 0 15px 0;
             color: var(--accent);
@@ -52,6 +80,7 @@
             font-weight: 300;
             text-shadow: 0 2px 4px rgba(212, 175, 55, 0.1);
             text-align: center;
+            padding-right: 80px; /* Space for language toggle */
         }
 
         .subtitle {
@@ -222,25 +251,20 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: linear-gradient(45deg,
-                    transparent 25%,
-                    rgba(255, 255, 255, 0.4) 25%,
-                    rgba(255, 255, 255, 0.4) 50%,
-                    transparent 50%,
-                    transparent 75%,
-                    rgba(255, 255, 255, 0.4) 75%);
+            background: linear-gradient(45deg, 
+                transparent 25%, 
+                rgba(255, 255, 255, 0.4) 25%, 
+                rgba(255, 255, 255, 0.4) 50%, 
+                transparent 50%, 
+                transparent 75%, 
+                rgba(255, 255, 255, 0.4) 75%);
             background-size: 20px 20px;
             animation: progressShine 1.5s linear infinite;
         }
 
         @keyframes progressShine {
-            0% {
-                background-position: -20px 0;
-            }
-
-            100% {
-                background-position: 20px 0;
-            }
+            0% { background-position: -20px 0; }
+            100% { background-position: 20px 0; }
         }
 
         .current-file {
@@ -271,16 +295,17 @@
             .card {
                 padding: 25px;
             }
-
+            
             h1 {
                 font-size: 2rem;
+                padding-right: 60px;
             }
-
+            
             .controls {
                 flex-direction: column;
                 align-items: stretch;
             }
-
+            
             .grid {
                 grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
                 gap: 10px;
@@ -292,16 +317,17 @@
 <body>
     <div class="wrap">
         <div class="card">
-            <h1>📸 Wedding Photo Drop</h1>
-            <p class="muted subtitle" id="subtitle">Споделете ги вашите прекрасни спомени со нас. Не е потребна најава.
-            </p>
+            <div class="header-section">
+                <button id="langToggle" class="lang-toggle">EN</button>
+                <h1 id="pageTitle">📸 Свадбена фото галерија</h1>
+                <p class="muted subtitle" id="subtitle">Споделете ги вашите прекрасни спомени со нас. Не е потребна најава.</p>
+            </div>
 
             <div class="controls">
                 <input id="files" type="file" accept="image/*,video/*" multiple />
                 <label for="files" class="btn" id="selectBtn">📁 Избери фотографии/видеа</label>
                 <button id="btnUpload">🚀 Прикачи</button>
                 <button id="btnClear" class="ghost">🗑️ Избриши</button>
-                <button id="langToggle" class="ghost" style="margin-left: auto;">🌐 EN</button>
             </div>
 
             <div id="count" class="file-count">Нема избрани датотеки сè уште.</div>
@@ -332,6 +358,7 @@
 
         const translations = {
             mk: {
+                pageTitle: '📸 Свадбена фото галерија',
                 subtitle: 'Споделете ги вашите прекрасни спомени со нас. Не е потребна најава.',
                 selectBtn: '📁 Избери фотографии/видеа',
                 uploadBtn: '🚀 Прикачи',
@@ -348,6 +375,7 @@
                 files: 'датотека/и'
             },
             en: {
+                pageTitle: '📸 Wedding Photo Drop',
                 subtitle: 'Share your beautiful memories with us. No login required.',
                 selectBtn: '📁 Select Photos/Videos',
                 uploadBtn: '🚀 Upload',
@@ -371,6 +399,7 @@
         const elBtnClear = document.getElementById('btnClear');
         const elSelectBtn = document.getElementById('selectBtn');
         const elLangToggle = document.getElementById('langToggle');
+        const elPageTitle = document.getElementById('pageTitle');
         const elSubtitle = document.getElementById('subtitle');
         const elPrev = document.getElementById('preview');
         const elCount = document.getElementById('count');
@@ -383,14 +412,15 @@
 
         function updateLanguage() {
             const t = translations[currentLang];
+            elPageTitle.textContent = t.pageTitle;
             elSubtitle.textContent = t.subtitle;
             elSelectBtn.textContent = t.selectBtn;
             elBtnUp.textContent = t.uploadBtn;
             elBtnClear.textContent = t.clearBtn;
             elProgressTitle.textContent = t.progressTitle;
             elCurrentFile.textContent = t.preparing;
-            elLangToggle.textContent = currentLang === 'mk' ? '🌐 EN' : '🌐 МК';
-
+            elLangToggle.textContent = currentLang === 'mk' ? 'EN' : 'МК';
+            
             // Update file count if no files selected
             const files = Array.from(elFiles.files || []);
             if (files.length === 0) {
@@ -406,16 +436,16 @@
             updateLanguage();
         });
 
-        function setStatus(msg, cls = '') {
-            elStatus.className = cls;
-            elStatus.textContent = msg;
+        function setStatus(msg, cls = '') { 
+            elStatus.className = cls; 
+            elStatus.textContent = msg; 
         }
 
         function updateProgress(current, total, fileName = '') {
             const percentage = Math.round((current / total) * 100);
             elProgressBar.style.width = percentage + '%';
             elProgressPercentage.textContent = percentage + '%';
-
+            
             if (fileName) {
                 const t = translations[currentLang];
                 elCurrentFile.textContent = `${t.uploading}${fileName}`;
@@ -430,14 +460,14 @@
             elProgressSection.style.display = 'none';
         }
 
-        function prettyBytes(n) {
-            const u = ['B', 'KB', 'MB', 'GB'];
-            let i = 0;
-            while (n >= 1024 && i < u.length - 1) {
-                n /= 1024;
-                i++
-            }
-            return `${n.toFixed(1)} ${u[i]}`
+        function prettyBytes(n) { 
+            const u = ['B', 'KB', 'MB', 'GB']; 
+            let i = 0; 
+            while (n >= 1024 && i < u.length - 1) { 
+                n /= 1024; 
+                i++ 
+            } 
+            return `${n.toFixed(1)} ${u[i]}` 
         }
 
         function refreshPreview() {
@@ -457,10 +487,10 @@
         }
 
         elFiles.addEventListener('change', refreshPreview);
-        elBtnClear.addEventListener('click', () => {
-            elFiles.value = '';
-            refreshPreview();
-            setStatus('');
+        elBtnClear.addEventListener('click', () => { 
+            elFiles.value = ''; 
+            refreshPreview(); 
+            setStatus(''); 
             hideProgress();
         });
 
@@ -494,10 +524,10 @@
         elBtnUp.addEventListener('click', async () => {
             const files = Array.from(elFiles.files || []);
             const t = translations[currentLang];
-
-            if (!files.length) {
-                setStatus(t.selectFiles, 'err');
-                return;
+            
+            if (!files.length) { 
+                setStatus(t.selectFiles, 'err'); 
+                return; 
             }
 
             // Guardrail: very large videos will be slow; photos are best.
@@ -515,20 +545,20 @@
             try {
                 let done = 0;
                 updateProgress(0, files.length);
-
+                
                 for (let i = 0; i < files.length; i++) {
                     const file = files[i];
                     updateProgress(i, files.length, file.name);
-
+                    
                     await uploadOne(file);
                     done++;
                     updateProgress(done, files.length, `✓ ${file.name}`);
-
+                    
                     // Small delay to show progress
                     await new Promise(resolve => setTimeout(resolve, 300));
                 }
-
-                elFiles.value = '';
+                
+                elFiles.value = ''; 
                 refreshPreview();
                 hideProgress();
                 setStatus(t.success, 'ok');
