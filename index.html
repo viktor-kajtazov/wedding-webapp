@@ -222,20 +222,25 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: linear-gradient(45deg, 
-                transparent 25%, 
-                rgba(255, 255, 255, 0.4) 25%, 
-                rgba(255, 255, 255, 0.4) 50%, 
-                transparent 50%, 
-                transparent 75%, 
-                rgba(255, 255, 255, 0.4) 75%);
+            background: linear-gradient(45deg,
+                    transparent 25%,
+                    rgba(255, 255, 255, 0.4) 25%,
+                    rgba(255, 255, 255, 0.4) 50%,
+                    transparent 50%,
+                    transparent 75%,
+                    rgba(255, 255, 255, 0.4) 75%);
             background-size: 20px 20px;
             animation: progressShine 1.5s linear infinite;
         }
 
         @keyframes progressShine {
-            0% { background-position: -20px 0; }
-            100% { background-position: 20px 0; }
+            0% {
+                background-position: -20px 0;
+            }
+
+            100% {
+                background-position: 20px 0;
+            }
         }
 
         .current-file {
@@ -250,7 +255,7 @@
             border: 2px solid var(--border);
             border-radius: 12px;
             padding: 15px 20px;
-            margin: 20px 0;
+            margin: 20px 0 10px 0;
             text-align: center;
             font-weight: 500;
         }
@@ -266,16 +271,16 @@
             .card {
                 padding: 25px;
             }
-            
+
             h1 {
                 font-size: 2rem;
             }
-            
+
             .controls {
                 flex-direction: column;
                 align-items: stretch;
             }
-            
+
             .grid {
                 grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
                 gap: 10px;
@@ -288,30 +293,33 @@
     <div class="wrap">
         <div class="card">
             <h1>📸 Wedding Photo Drop</h1>
-            <p class="muted subtitle">Share your beautiful memories with us. No login required.</p>
+            <p class="muted subtitle" id="subtitle">Споделете ги вашите прекрасни спомени со нас. Не е потребна најава.
+            </p>
 
             <div class="controls">
                 <input id="files" type="file" accept="image/*,video/*" multiple />
-                <label for="files" class="btn">📁 Select Photos/Videos</label>
-                <button id="btnUpload">🚀 Upload</button>
-                <button id="btnClear" class="ghost">🗑️ Clear</button>
+                <label for="files" class="btn" id="selectBtn">📁 Избери фотографии/видеа</label>
+                <button id="btnUpload">🚀 Прикачи</button>
+                <button id="btnClear" class="ghost">🗑️ Избриши</button>
+                <button id="langToggle" class="ghost" style="margin-left: auto;">🌐 EN</button>
             </div>
 
-            <div id="count" class="file-count">No files selected yet.</div>
-            <div id="preview" class="grid"></div>
-            <div id="status" class="muted"></div>
+            <div id="count" class="file-count">Нема избрани датотеки сè уште.</div>
 
-            <!-- Progress Section -->
+            <!-- Progress Section - positioned above photos -->
             <div id="progressSection" class="progress-section">
                 <div class="progress-header">
-                    <span class="progress-title">Uploading your memories...</span>
+                    <span class="progress-title" id="progressTitle">Прикачување на вашите спомени...</span>
                     <span class="progress-percentage" id="progressPercentage">0%</span>
                 </div>
                 <div class="progress-bar-container">
                     <div class="progress-bar" id="progressBar"></div>
                 </div>
-                <div class="current-file" id="currentFile">Preparing upload...</div>
+                <div class="current-file" id="currentFile">Подготовка за прикачување...</div>
             </div>
+
+            <div id="preview" class="grid"></div>
+            <div id="status" class="muted"></div>
         </div>
     </div>
 
@@ -319,10 +327,51 @@
         const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbx1KeDuuJa44SKGYDp55DFza2Iql8rhjJM2nTrBAj9NTRwvVWMgnrl3Eah47j64udGI/exec';
         const EVENT_CODE = 'VIKTOR2025';
 
+        // Language translations
+        let currentLang = 'mk'; // Default to Macedonian
+
+        const translations = {
+            mk: {
+                subtitle: 'Споделете ги вашите прекрасни спомени со нас. Не е потребна најава.',
+                selectBtn: '📁 Избери фотографии/видеа',
+                uploadBtn: '🚀 Прикачи',
+                clearBtn: '🗑️ Избриши',
+                uploadingBtn: '⏳ Прикачува...',
+                noFiles: 'Нема избрани датотеки сè уште.',
+                progressTitle: 'Прикачување на вашите спомени...',
+                preparing: 'Подготовка за прикачување...',
+                uploading: 'Прикачува: ',
+                selectFiles: 'Ве молиме изберете една или повеќе датотеки.',
+                largeFiles: 'Ова изгледа големо. Размислете за помалку датотеки или скратете ги видеата за побрзо прикачување.',
+                success: '✅ Сите датотеки се прикачени успешно! Ви благодариме што ги споделивте вашите прекрасни спомени! 💕',
+                error: '❌ ',
+                files: 'датотека/и'
+            },
+            en: {
+                subtitle: 'Share your beautiful memories with us. No login required.',
+                selectBtn: '📁 Select Photos/Videos',
+                uploadBtn: '🚀 Upload',
+                clearBtn: '🗑️ Clear',
+                uploadingBtn: '⏳ Uploading...',
+                noFiles: 'No files selected yet.',
+                progressTitle: 'Uploading your memories...',
+                preparing: 'Preparing upload...',
+                uploading: 'Uploading: ',
+                selectFiles: 'Please select one or more files.',
+                largeFiles: 'This seems large. Consider fewer files or trimming videos for a faster upload.',
+                success: '✅ All files uploaded successfully! Thank you for sharing your beautiful memories! 💕',
+                error: '❌ ',
+                files: 'file(s)'
+            }
+        };
+
         // --- UI elements
         const elFiles = document.getElementById('files');
         const elBtnUp = document.getElementById('btnUpload');
         const elBtnClear = document.getElementById('btnClear');
+        const elSelectBtn = document.getElementById('selectBtn');
+        const elLangToggle = document.getElementById('langToggle');
+        const elSubtitle = document.getElementById('subtitle');
         const elPrev = document.getElementById('preview');
         const elCount = document.getElementById('count');
         const elStatus = document.getElementById('status');
@@ -330,19 +379,46 @@
         const elProgressBar = document.getElementById('progressBar');
         const elProgressPercentage = document.getElementById('progressPercentage');
         const elCurrentFile = document.getElementById('currentFile');
+        const elProgressTitle = document.getElementById('progressTitle');
 
-        function setStatus(msg, cls = '') { 
-            elStatus.className = cls; 
-            elStatus.textContent = msg; 
+        function updateLanguage() {
+            const t = translations[currentLang];
+            elSubtitle.textContent = t.subtitle;
+            elSelectBtn.textContent = t.selectBtn;
+            elBtnUp.textContent = t.uploadBtn;
+            elBtnClear.textContent = t.clearBtn;
+            elProgressTitle.textContent = t.progressTitle;
+            elCurrentFile.textContent = t.preparing;
+            elLangToggle.textContent = currentLang === 'mk' ? '🌐 EN' : '🌐 МК';
+
+            // Update file count if no files selected
+            const files = Array.from(elFiles.files || []);
+            if (files.length === 0) {
+                elCount.textContent = t.noFiles;
+            } else {
+                const total = files.reduce((s, f) => s + f.size, 0);
+                elCount.textContent = `${files.length} ${t.files}, total ${prettyBytes(total)}`;
+            }
+        }
+
+        elLangToggle.addEventListener('click', () => {
+            currentLang = currentLang === 'mk' ? 'en' : 'mk';
+            updateLanguage();
+        });
+
+        function setStatus(msg, cls = '') {
+            elStatus.className = cls;
+            elStatus.textContent = msg;
         }
 
         function updateProgress(current, total, fileName = '') {
             const percentage = Math.round((current / total) * 100);
             elProgressBar.style.width = percentage + '%';
             elProgressPercentage.textContent = percentage + '%';
-            
+
             if (fileName) {
-                elCurrentFile.textContent = `Uploading: ${fileName}`;
+                const t = translations[currentLang];
+                elCurrentFile.textContent = `${t.uploading}${fileName}`;
             }
         }
 
@@ -354,14 +430,14 @@
             elProgressSection.style.display = 'none';
         }
 
-        function prettyBytes(n) { 
-            const u = ['B', 'KB', 'MB', 'GB']; 
-            let i = 0; 
-            while (n >= 1024 && i < u.length - 1) { 
-                n /= 1024; 
-                i++ 
-            } 
-            return `${n.toFixed(1)} ${u[i]}` 
+        function prettyBytes(n) {
+            const u = ['B', 'KB', 'MB', 'GB'];
+            let i = 0;
+            while (n >= 1024 && i < u.length - 1) {
+                n /= 1024;
+                i++
+            }
+            return `${n.toFixed(1)} ${u[i]}`
         }
 
         function refreshPreview() {
@@ -376,18 +452,15 @@
                     : `<img src="${url}" alt="">`;
                 elPrev.appendChild(div);
             }
-            const total = files.reduce((s, f) => s + f.size, 0);
-            const countText = files.length ? `${files.length} file(s), total ${prettyBytes(total)}`
-                : 'No files selected yet.';
-            elCount.textContent = countText;
+            updateLanguage(); // This will update the file count with proper translation
             elCount.className = files.length ? 'file-count has-files' : 'file-count';
         }
 
         elFiles.addEventListener('change', refreshPreview);
-        elBtnClear.addEventListener('click', () => { 
-            elFiles.value = ''; 
-            refreshPreview(); 
-            setStatus(''); 
+        elBtnClear.addEventListener('click', () => {
+            elFiles.value = '';
+            refreshPreview();
+            setStatus('');
             hideProgress();
         });
 
@@ -420,52 +493,57 @@
 
         elBtnUp.addEventListener('click', async () => {
             const files = Array.from(elFiles.files || []);
-            if (!files.length) { 
-                setStatus('Please select one or more files.', 'err'); 
-                return; 
+            const t = translations[currentLang];
+
+            if (!files.length) {
+                setStatus(t.selectFiles, 'err');
+                return;
             }
 
             // Guardrail: very large videos will be slow; photos are best.
             const total = files.reduce((s, f) => s + f.size, 0);
             if (total > 60 * 1024 * 1024) {
-                setStatus('This seems large. Consider fewer files or trimming videos for a faster upload.', 'err');
+                setStatus(t.largeFiles, 'err');
                 // continue anyway
             }
 
             elBtnUp.disabled = true;
-            elBtnUp.textContent = '⏳ Uploading...';
+            elBtnUp.textContent = t.uploadingBtn;
             showProgress();
             setStatus('');
 
             try {
                 let done = 0;
                 updateProgress(0, files.length);
-                
+
                 for (let i = 0; i < files.length; i++) {
                     const file = files[i];
                     updateProgress(i, files.length, file.name);
-                    
+
                     await uploadOne(file);
                     done++;
                     updateProgress(done, files.length, `✓ ${file.name}`);
-                    
+
                     // Small delay to show progress
                     await new Promise(resolve => setTimeout(resolve, 300));
                 }
-                
-                elFiles.value = ''; 
+
+                elFiles.value = '';
                 refreshPreview();
                 hideProgress();
-                setStatus('✅ All files uploaded successfully! Thank you for sharing your beautiful memories! 💕', 'ok');
+                setStatus(t.success, 'ok');
             } catch (e) {
                 console.error(e);
                 hideProgress();
-                setStatus(`❌ ${String(e.message || e)}`, 'err');
+                setStatus(`${t.error}${String(e.message || e)}`, 'err');
             } finally {
                 elBtnUp.disabled = false;
-                elBtnUp.textContent = '🚀 Upload';
+                elBtnUp.textContent = t.uploadBtn;
             }
         });
+
+        // Initialize with Macedonian
+        updateLanguage();
     </script>
 </body>
 
